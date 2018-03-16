@@ -11,11 +11,38 @@ var schema = buildSchema(`
   }
 
   type Query {
-    quoteOfTheDay: String,
-    random: Float!,
+    quoteOfTheDay: String
+    random: Float!
     getDie(numSides: Int): RandomDie
+    getMessage(id: ID!): Message
+  }
+
+  input MessageInput {
+    content: String
+    author: String
+  }
+
+  type Message {
+    id: ID!
+    content: String
+    author: String
+  }
+
+  type Mutation {
+    createMessage(input: MessageInput): Message
+    updateMessage(id: ID!, input: MessageInput): Message
   }
 `)
+
+var fakeDb = {}
+
+class Message {
+  constructor({ id, content, author }) {
+    this.id = id
+    this.content = content
+    this.author = author
+  }
+}
 
 class RandomDie {
   constructor (numSides) {
@@ -39,7 +66,40 @@ class RandomDie {
 var root = {
   quoteOfTheDay: () => Math.random() < 0.5 ? 'Take it easy' : 'salvation lies between',
   random: () => Math.random(),
-  getDie: ({ numSides = 6 }) => new RandomDie(numSides)
+  getDie: ({ numSides = 6 }) => new RandomDie(numSides),
+  getMessage: ({ id }) => {
+    if (!fakeDb[id]) {
+      throw new Error('no messages exist with id ' + id)
+    }
+    return new Message({
+      id,
+      content: fakeDb[id].content,
+      author: fakeDb[id].author
+    })
+  },
+
+  createMessage: ({ input }) => {
+    const id = Object.keys(fakeDb).length + 1 + ''
+    fakeDb[id] = input
+    return new Message({
+      id,
+      content: input.content,
+      author: input.author
+    })
+  },
+
+  updateMessage: ({ id, input }) => {
+    if (!fakeDb[id]) {
+      throw new Error('no messages exist with id ' + id)
+    }
+
+    fakeDb[id] = input
+    return new Message({
+      id,
+      content: input.content,
+      author: input.author
+    })
+  }
 }
 
 const app = express()
